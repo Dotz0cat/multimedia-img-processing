@@ -4,7 +4,7 @@
 #include <stdlib.h>
 #include <math.h>
 
-#include <openblas/cblas.h>
+#include <openblas64/cblas.h>
 #include <jpeglib.h>
 
 #include "image.h"

@@ -69,7 +69,7 @@ static double * lchuv_space_from_grayscale(struct jpeg_img_data *img) {
 }
 
 static double * lchuv_space_from_rgb(struct jpeg_img_data *img) {
-	size_t length = (img->height * img->width) * 3;
+	size_t length = (img->height * img->width) * 3UL;
 
 	double *img_data = aligned_alloc(64, sizeof(double) * length);
 
@@ -88,9 +88,9 @@ static void xyz_to_luv(double *xyz, const double ref_white[3], size_t length) {
 	const double ref_v = ( 9.0 * ref_white[1] ) / ( ref_white[0] + 15.0 * ref_white[1] + 3.0 * ref_white[2] );
 
 	#pragma omp parallel for shared(ref_u, ref_v, xyz)
-	for (size_t i = 0u; i < length; i += 3u) {
+	for (size_t i = 0UL; i < length; i += 3UL) {
 
-		double y_r = xyz[i + 0] / ref_white[0];
+		double y_r = xyz[i + 0UL] / ref_white[0];
 		double L = 0.0;
 
 		if (y_r > CIE_EPLSION) {
@@ -100,15 +100,15 @@ static void xyz_to_luv(double *xyz, const double ref_white[3], size_t length) {
 			L = CIE_KAPPA * y_r;
 		}
 
-		double u_prime = ( 4.0 * xyz[i + 0] ) / ( xyz[i + 0] + 15.0 * xyz[i + 1] + 3.0 * xyz[i + 2] );
-		double v_prime = ( 9.0 * xyz[i + 1] ) / ( xyz[i + 0] + 15.0 * xyz[i + 1] + 3.0 * xyz[i + 2] );
+		double u_prime = ( 4.0 * xyz[i + 0UL] ) / ( xyz[i + 0UL] + 15.0 * xyz[i + 1UL] + 3.0 * xyz[i + 2UL] );
+		double v_prime = ( 9.0 * xyz[i + 1UL] ) / ( xyz[i + 0UL] + 15.0 * xyz[i + 1UL] + 3.0 * xyz[i + 2UL] );
 
 		double u = 13.0 * L * (u_prime - ref_u);
 		double v = 13.0 * L * (v_prime - ref_v);
 
-		xyz[i + 0] = L;
-		xyz[i + 1] = u;
-		xyz[i + 2] = v;
+		xyz[i + 0UL] = L;
+		xyz[i + 1UL] = u;
+		xyz[i + 2UL] = v;
 	}
 }
 
@@ -120,14 +120,14 @@ static void luv_to_lchuv(double *luv, size_t length) {
 	//L componet stays the same
 
 	#pragma omp parallel for shared(luv)
-	for (size_t i = 0u; i < length; i += 3u) {
-		double C = sqrt(pow(luv[i + 1], 2.0) + pow(luv[i + 2], 2.0));
-		double H = atan2(luv[i + 2], luv[i + 1]);
+	for (size_t i = 0UL; i < length; i += 3UL) {
+		double C = sqrt(pow(luv[i + 1UL], 2.0) + pow(luv[i + 2UL], 2.0));
+		double H = atan2(luv[i + 2UL], luv[i + 1UL]);
 		
-		if (H <= 0.0) H = H + (2 * M_PI);
+		if (H <= 0.0) H = H + (2.0 * M_PI);
 
-		luv[i + 1] = C;
-		luv[i + 2] = H;
+		luv[i + 1UL] = C;
+		luv[i + 2UL] = H;
 	}
 }
 
@@ -135,83 +135,56 @@ static void rgb_to_xyz(const uint8_t *rgb_data, double *xyz, size_t length) {
 
 	//initalize the xyz array with the rgb values
 	#pragma omp parallel for
-	for (size_t i = 0u; i < length; i += 3u) {
-		xyz[i + 0] = rgb_data[i + 0] / 255.0;
-		xyz[i + 1] = rgb_data[i + 1] / 255.0;
-		xyz[i + 2] = rgb_data[i + 2] / 255.0;
+	for (size_t i = 0UL; i < length; i += 3UL) {
+		xyz[i + 0UL] = rgb_data[i + 0UL] / 255.0;
+		xyz[i + 1UL] = rgb_data[i + 1UL] / 255.0;
+		xyz[i + 2UL] = rgb_data[i + 2UL] / 255.0;
 
-		xyz[i + 0] = xyz[i + 0] <= 0.04045 ? xyz[i + 0] / 12.92 : pow((xyz[i + 0] + 0.055) / 1.055, 2.4);
-		xyz[i + 1] = xyz[i + 1] <= 0.04045 ? xyz[i + 1] / 12.92 : pow((xyz[i + 1] + 0.055) / 1.055, 2.4);
-		xyz[i + 2] = xyz[i + 2] <= 0.04045 ? xyz[i + 2] / 12.92 : pow((xyz[i + 2] + 0.055) / 1.055, 2.4);
+		xyz[i + 0UL] = xyz[i + 0UL] <= 0.04045 ? xyz[i + 0UL] / 12.92 : pow((xyz[i + 0UL] + 0.055) / 1.055, 2.4);
+		xyz[i + 1UL] = xyz[i + 1UL] <= 0.04045 ? xyz[i + 1UL] / 12.92 : pow((xyz[i + 1UL] + 0.055) / 1.055, 2.4);
+		xyz[i + 2UL] = xyz[i + 2UL] <= 0.04045 ? xyz[i + 2UL] / 12.92 : pow((xyz[i + 2UL] + 0.055) / 1.055, 2.4);
 
 		// xyz[i + 0] = xyz[i + 0] <= 0.08 ? 100.0 * xyz[i + 0] / CIE_KAPPA : pow((xyz[i + 0] + 0.16) / 1.16, 3);
 		// xyz[i + 1] = xyz[i + 1] <= 0.08 ? 100.0 * xyz[i + 1] / CIE_KAPPA : pow((xyz[i + 1] + 0.16) / 1.16, 3);
 		// xyz[i + 2] = xyz[i + 2] <= 0.08 ? 100.0 * xyz[i + 2] / CIE_KAPPA : pow((xyz[i + 2] + 0.16) / 1.16, 3);
 	}
 
-	//pal/secam / bt601 D65
-	// const double conversion_matrix[] = {
-	// 	0.4306190, 0.3415419, 0.1783091,
-	// 	0.2220379, 0.7066384, 0.0713236,
-	// 	0.0201853, 0.1295504, 0.9390944
-	// };
-
-	// const double conversion_matrix[] = {
-	// 	0.4552773,  0.3675500,  0.1413926,
-	// 	0.2323025,  0.7077956,  0.0599019,
-	// 	0.0145457,  0.1049154,  0.7057489
-	// };
-
 	// sRGB
-	const double conversion_matrix[] = {
+	static const double conversion_matrix[] = {
 		0.4124564, 0.3575761, 0.1804375,
 		0.2126729, 0.7151522, 0.0721750,
 		0.0193339, 0.1191920, 0.9503041
 	};
 
-	// const double conversion_matrix[] = {
-	// 	0.4360747,  0.3850649,  0.1430804,
-	//  	0.2225045,  0.7168786,  0.0606169,
-	//  	0.0139322,  0.0971045,  0.7141733
- // 	};
-
-	// const double conversion_matrix[] = {
-	// 	0.41238656, 0.35759149, 0.18045049,
-	// 	0.21263682, 0.71518298, 0.0721802,
-	// 	0.01933062, 0.11919716, 0.01203003
-	// };
-
-	//adobe rgb
-	// const double conversion_matrix[] = {
-	// 	0.5767309, 0.1855540, 0.1881852,
-	// 	0.2973769, 0.6273491, 0.0752741,
-	// 	0.0270343, 0.0706872, 0.9911085
- // 	};
+	static const double conversion_matrix_t[] = {
+		0.4124564, 0.2126729, 0.0193339,
+		0.3575761, 0.7151522, 0.1191920,
+		0.1804375, 0.0721750, 0.9503041
+	};
 
 	
 	double *rgb_value;
 	double xyz_output_loc[3] = {0.0, 0.0, 0.0};
-	// 0.0, 0.0, 0.0, 0.0, 0.0, 0.0};
 
 	#pragma omp parallel for private(rgb_value, xyz_output_loc) shared(conversion_matrix, xyz)
 	for (size_t i = 0u; i < length; i += 3u) {
 		rgb_value = &xyz[i];
 
-		//cblas_dgemv(CblasRowMajor, CblasNoTrans, 3, 3, 1.0, conversion_matrix, 3, rgb_value, 1, 0.0, xyz_output_loc, 1);
-		cblas_dgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, 3, 1, 3, 1.0, conversion_matrix, 3, rgb_value, 1, 0.0, xyz_output_loc, 1);
+		cblas_dgemv(CblasRowMajor, CblasNoTrans, 3, 3, 1.0, conversion_matrix, 3, rgb_value, 1, 0.0, xyz_output_loc, 1);
+		//cblas_dgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, 3, 1, 3, 1.0, conversion_matrix, 3, rgb_value, 1, 0.0, xyz_output_loc, 1);
 
-		xyz[i + 0] = xyz_output_loc[0] < 0.0 ? 0.0 : xyz_output_loc[0] > 1.0 ? 1.0 : xyz_output_loc[0];
-		xyz[i + 1] = xyz_output_loc[1] < 0.0 ? 0.0 : xyz_output_loc[1] > 1.0 ? 1.0 : xyz_output_loc[1];
-		xyz[i + 2] = xyz_output_loc[2] < 0.0 ? 0.0 : xyz_output_loc[2] > 1.0 ? 1.0 : xyz_output_loc[2];
-	// 	// xyz[i + 3] = xyz_output_loc[3] < 0.0 ? 0.0 : xyz_output_loc[3] > 1.0 ? 1.0 : xyz_output_loc[3];
-	// 	// xyz[i + 4] = xyz_output_loc[4] < 0.0 ? 0.0 : xyz_output_loc[4] > 1.0 ? 1.0 : xyz_output_loc[4];
-	// 	// xyz[i + 5] = xyz_output_loc[5] < 0.0 ? 0.0 : xyz_output_loc[5] > 1.0 ? 1.0 : xyz_output_loc[5];
-	// 	// xyz[i + 6] = xyz_output_loc[6] < 0.0 ? 0.0 : xyz_output_loc[6] > 1.0 ? 1.0 : xyz_output_loc[6];
-	// 	// xyz[i + 7] = xyz_output_loc[7] < 0.0 ? 0.0 : xyz_output_loc[7] > 1.0 ? 1.0 : xyz_output_loc[7];
-	// 	// xyz[i + 8] = xyz_output_loc[8] < 0.0 ? 0.0 : xyz_output_loc[8] > 1.0 ? 1.0 : xyz_output_loc[8];
+		xyz[i + 0] = xyz_output_loc[0];
+		xyz[i + 1] = xyz_output_loc[1];
+		xyz[i + 2] = xyz_output_loc[2];
 	}
 
-	//cblas_dgemm(CblasColMajor, CblasNoTrans, CblasTrans, 3, (length / 3), 3, 1.0, conversion_matrix, 3, xyz, (length / 3), 0.0, xyz, (length / 3));
+	// double *extra_xyz = aligned_alloc(64, sizeof(double) * length);
+
+	// cblas_dgemm(CblasRowMajor, CblasNoTrans, CblasTrans, 3, (length / 3UL), 3, 1.0, conversion_matrix_t, 3, xyz, 3, 0.0, extra_xyz, (length / 3UL));
+
+	// memcpy(xyz, extra_xyz, length);
+
+	// free(extra_xyz);
 	
 }
 
@@ -233,13 +206,13 @@ uint8_t * rgb_space_from_lchuv(double *lchuv, size_t length) {
 static void lchuv_to_luv(double *lchuv, size_t length) {
 
 	#pragma omp parallel for
-	for (size_t i = 0u; i < length; i += 3u) {
+	for (size_t i = 0UL; i < length; i += 3UL) {
 		//L stays the same
-		double u = lchuv[i + 1] * cos(lchuv[i + 2]);
-		double v = lchuv[i + 1] * sin(lchuv[i + 2]);
+		double u = lchuv[i + 1UL] * cos(lchuv[i + 2UL]);
+		double v = lchuv[i + 1UL] * sin(lchuv[i + 2UL]);
 
-		lchuv[i + 1] = u;
-		lchuv[i + 2] = v;
+		lchuv[i + 1UL] = u;
+		lchuv[i + 2UL] = v;
 	}
 }
 
@@ -248,19 +221,19 @@ static void luv_to_xyz(double *luv, const double ref_white[3], size_t length) {
 	const double ref_v = ( 9.0 * ref_white[1] ) / ( ref_white[0] + 15.0 * ref_white[1] + 3.0 * ref_white[2] );
 
 	#pragma omp parallel for
-	for (size_t i = 0u; i < length; i += 3u) {
+	for (size_t i = 0UL; i < length; i += 3UL) {
 		double Y = 0.0;
-		if (luv[i + 0] > (CIE_KAPPA * CIE_EPLSION)) {
-			Y = pow( (luv[i + 0] + 16.0) / 116.0, 3.0);
+		if (luv[i + 0UL] > (CIE_KAPPA * CIE_EPLSION)) {
+			Y = pow( (luv[i + 0UL] + 16.0) / 116.0, 3.0);
 		}
 		else {
-			Y = luv[i + 0] / CIE_KAPPA;
+			Y = luv[i + 0UL] / CIE_KAPPA;
 		}
 
-		double a = ( 1.0 / 3.0 ) * ( ( 52.0 * luv[i + 0] ) / ( luv[i + 1] + 13.0 * luv[i + 0] * ref_u ) - 1.0 );
+		double a = ( 1.0 / 3.0 ) * ( ( 52.0 * luv[i + 0UL] ) / ( luv[i + 1UL] + 13.0 * luv[i + 0UL] * ref_u ) - 1.0 );
 		double b = -5.0 * Y;
 		double c = -( 1.0 / 3.0 );
-		double d = Y * ( ( 39.0 * luv[i + 0] ) / ( luv[i + 2] + 13.0 * luv[i + 0] * ref_v ) - 5.0 );
+		double d = Y * ( ( 39.0 * luv[i + 0UL] ) / ( luv[i + 2UL] + 13.0 * luv[i + 0UL] * ref_v ) - 5.0 );
 
 		double X = ( d - b ) / ( a - c );
 		double Z = X * a + b;
@@ -269,9 +242,9 @@ static void luv_to_xyz(double *luv, const double ref_white[3], size_t length) {
 		Y = Y < 0.0 ? 0.0 : Y > 1.0 ? 1.0 : Y;
 		Z = Z < 0.0 ? 0.0 : Z > 1.0 ? 1.0 : Z;
 
-		luv[i + 0] = X;
-		luv[i + 1] = Y;
-		luv[i + 2] = Z;
+		luv[i + 0UL] = X;
+		luv[i + 1UL] = Y;
+		luv[i + 2UL] = Z;
 	}
 }
 
@@ -321,12 +294,12 @@ static void xyz_to_rgb(double *xyz, uint8_t *rgb, size_t length) {
 	double *xyz_value;
 
 	#pragma omp parallel for private(rgb_value, xyz_value) shared(rgb, conversion_matrix)
-	for (size_t i = 0u; i < length; i += 3u) {
+	for (size_t i = 0UL; i < length; i += 3UL) {
 
 		xyz_value = &xyz[i];
 
-		//cblas_dgemv(CblasRowMajor, CblasNoTrans, 3, 3, 1.0, conversion_matrix, 3, xyz_value, 1, 0, rgb_value, 1);
-		cblas_dgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, 3, 1, 3, 1.0, conversion_matrix, 3, xyz_value, 1, 0.0, rgb_value, 1);
+		cblas_dgemv(CblasRowMajor, CblasNoTrans, 3, 3, 1.0, conversion_matrix, 3, xyz_value, 1, 0, rgb_value, 1);
+		//cblas_dgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, 3, 1, 3, 1.0, conversion_matrix, 3, xyz_value, 1, 0.0, rgb_value, 1);
 
 		rgb_value[0] = rgb_value[0] <= 0.0031308 ? rgb_value[0] * 12.92 : 1.055 * ( pow(rgb_value[0], 1.0 / 2.4) ) - 0.055;
 		rgb_value[1] = rgb_value[1] <= 0.0031308 ? rgb_value[1] * 12.92 : 1.055 * ( pow(rgb_value[1], 1.0 / 2.4) ) - 0.055;
@@ -344,8 +317,8 @@ static void xyz_to_rgb(double *xyz, uint8_t *rgb, size_t length) {
 		// rgb[i + 1] = (uint8_t) fmin(fmax(rgb_value[1], 0.0), 255.0);
 		// rgb[i + 2] = (uint8_t) fmin(fmax(rgb_value[2], 0.0), 255.0);
 
-		rgb[i + 0] = (uint8_t) (rgb_value[0] <= 0.0) ? 0 : (rgb_value[0] >= 255.0) ? 255 : rgb_value[0];
-		rgb[i + 1] = (uint8_t) (rgb_value[1] <= 0.0) ? 0 : (rgb_value[1] >= 255.0) ? 255 : rgb_value[1];
-		rgb[i + 2] = (uint8_t) (rgb_value[2] <= 0.0) ? 0 : (rgb_value[2] >= 255.0) ? 255 : rgb_value[2];
+		rgb[i + 0UL] = (uint8_t) (rgb_value[0] <= 0.0) ? 0U : (rgb_value[0] >= 255.0) ? 255U : rgb_value[0];
+		rgb[i + 1UL] = (uint8_t) (rgb_value[1] <= 0.0) ? 0U : (rgb_value[1] >= 255.0) ? 255U : rgb_value[1];
+		rgb[i + 2UL] = (uint8_t) (rgb_value[2] <= 0.0) ? 0U : (rgb_value[2] >= 255.0) ? 255U : rgb_value[2];
 	}
 }

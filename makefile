@@ -9,7 +9,7 @@ EXECUTABLE=program
 
 build: $(OBJDIR) $(OBJECTS) $(EXECUTABLE)
 
-OBJECTS= $(OBJDIR)/image.o $(OBJDIR)/color.o $(OBJDIR)/main.o
+OBJECTS= $(OBJDIR)/image.o $(OBJDIR)/processing.o $(OBJDIR)/color.o $(OBJDIR)/main.o
 
 $(EXECUTABLE): $(OBJECTS)
 	$(CC) $(CFLAGS) $(CPPFLAGS) $^ -o $@ $(LDLIBS)
@@ -24,6 +24,9 @@ $(OBJDIR)/image.o: $(SRCDIR)/image.c $(SRCDIR)/image.h
 	$(CC) $(CFLAGS) $(CPPFLAGS) -c $< -o $@
 
 $(OBJDIR)/color.o: $(SRCDIR)/color.c $(SRCDIR)/color_private.h $(SRCDIR)/color.h
+	$(CC) $(CFLAGS) $(CPPFLAGS) -c $< -o $@
+
+$(OBJDIR)/processing.o: $(SRCDIR)/processing.c $(SRCDIR)/processing_private.h $(SRCDIR)/processing.h
 	$(CC) $(CFLAGS) $(CPPFLAGS) -c $< -o $@
 
 .PHONEY: clean
