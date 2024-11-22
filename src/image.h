@@ -14,6 +14,17 @@ struct marker_carrier {
     uint8_t marker_number;
 };
 
+enum command_map {
+    PROCESS_COLOR_SPACE_RGB     = 1u << 0u,
+    PROCESS_NOISE_DETECTION     = 1u << 1u,
+    PROCESS_NOISE_REDUCTION     = 1u << 2u,
+    PROCESS_AVG                 = 1u << 3u,
+    PROCESS_MSE                 = 1u << 4u,
+    PROCESS_MAX                 = 1u << 5u,
+    PROCESS_PSNR                = 1u << 6u,
+    PROCESS_SNR                 = 1u << 7u
+};
+
 struct jpeg_img_data {
     unsigned int num_components;
 
@@ -24,13 +35,19 @@ struct jpeg_img_data {
     
     double gamma;
 
-    // uint8_t jmajor;
-    // uint8_t jminor;
-
     unsigned int num_markers;
     struct marker_carrier *markers;
 
     uint8_t *raw_data;
+    double *lchuv_data;
+
+    enum command_map commands;
+
+    double *avg;
+    double *mse;
+    void *max;
+    double *psnr;
+    double *snr;
 };
 
 struct jpeg_file_list {

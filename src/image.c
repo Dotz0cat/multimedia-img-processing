@@ -72,6 +72,14 @@ struct jpeg_img_data * read_image(FILE *fp) {
     jpeg_destroy_decompress(&cinfo);
     fclose(fp);
 
+    image->commands = 0;
+    image->lchuv_data = NULL;
+    image->avg = NULL;
+    image->mse = NULL;
+    image->max = NULL;
+    image->psnr = NULL;
+    image->snr = NULL;
+
     return image;
 }
 
@@ -128,6 +136,14 @@ void free_jpeg_img_data(struct jpeg_img_data *data) {
     }
     free(data->markers);
     free(data->raw_data);
+
+    if (data->lchuv_data != NULL) free(data->lchuv_data);
+    if (data->avg != NULL) free(data->avg);
+    if (data->mse != NULL) free(data->mse);
+    if (data->max != NULL) free(data->max);
+    if (data->psnr != NULL) free(data->psnr);
+    if (data->snr != NULL) free(data->snr);
+
     free(data);
     data = NULL;
 }

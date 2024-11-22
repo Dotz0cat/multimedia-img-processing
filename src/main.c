@@ -36,10 +36,10 @@ int main(int argc, char **argv) {
     file_list = &file_list_head;
 
     for (int i = 1; i < argc; i++) {
-        double *lchuv = convert_to_lchuv_space((*file_list)->data);
-        uint8_t *rgb = rgb_space_from_lchuv(lchuv, ((*file_list)->data->width * (*file_list)->data->height) * 3);
-
-        free(lchuv);
+        (*file_list)->data->lchuv_data = convert_to_lchuv_space((*file_list)->data);
+        (*file_list)->data->commands = PROCESS_NOISE_REDUCTION | PROCESS_AVG | PROCESS_MSE;
+        process_image((*file_list)->data);
+        uint8_t *rgb = rgb_space_from_lchuv((*file_list)->data->lchuv_data, ((*file_list)->data->width * (*file_list)->data->height) * 3);
 
         free((*file_list)->data->raw_data);
         (*file_list)->data->raw_data = rgb;

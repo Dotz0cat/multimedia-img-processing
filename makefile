@@ -1,4 +1,4 @@
-CFLAGS= -g -O2 -Wall -Wextra -fopenmp
+CFLAGS= -g -O2 -Wall -Wextra -fopenmp #-fsanitize=address
 CPPFLAGS= $(shell pkg-config --cflags libjpeg libturbojpeg cblas)
 LDLIBS= $(shell pkg-config --libs libjpeg libturbojpeg cblas) -lm
 

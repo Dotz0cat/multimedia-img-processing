@@ -1,6 +1,6 @@
 #include "color_private.h"
 
-double * convert_to_lchuv_space(struct jpeg_img_data *img) {
+double * convert_to_lchuv_space(struct jpeg_img_data *restrict img) {
 	switch (img->color_space) {
 		case JCS_YCbCr:
 			return lchuv_space_from_ycbcr(img);
@@ -17,7 +17,7 @@ double * convert_to_lchuv_space(struct jpeg_img_data *img) {
 	return NULL;
 }
 
-static double * lchuv_space_from_ycbcr(struct jpeg_img_data *img) {
+static double * lchuv_space_from_ycbcr(struct jpeg_img_data *restrict img) {
 	// struct YCrCb *yuv = img->raw_data;
 
 	// size_t length = (img->height * img->width);
@@ -44,7 +44,7 @@ static double * lchuv_space_from_ycbcr(struct jpeg_img_data *img) {
 	return NULL;
 }
 
-static double * lchuv_space_from_grayscale(struct jpeg_img_data *img) {
+static double * lchuv_space_from_grayscale(struct jpeg_img_data *restrict img) {
 	// size_t length = (img->height * img->width) * 3;
 
 	// uint8_t *img_rgb = malloc(length);
@@ -68,10 +68,10 @@ static double * lchuv_space_from_grayscale(struct jpeg_img_data *img) {
 	return NULL;
 }
 
-static double * lchuv_space_from_rgb(struct jpeg_img_data *img) {
+static double * lchuv_space_from_rgb(struct jpeg_img_data *restrict img) {
 	size_t length = (img->height * img->width) * 3UL;
 
-	double *img_data = aligned_alloc(64, sizeof(double) * length);
+	double *restrict img_data = aligned_alloc(64, sizeof(double) * length);
 
 	rgb_to_xyz(img->raw_data, img_data, length);
 
@@ -83,7 +83,7 @@ static double * lchuv_space_from_rgb(struct jpeg_img_data *img) {
 	return img_data;
 }
 
-static void xyz_to_luv(double *xyz, const double ref_white[3], size_t length) {
+static void xyz_to_luv(double *restrict xyz, const double ref_white[3], size_t length) {
 	const double ref_u = ( 4.0 * ref_white[0] ) / ( ref_white[0] + 15.0 * ref_white[1] + 3.0 * ref_white[2] );
 	const double ref_v = ( 9.0 * ref_white[1] ) / ( ref_white[0] + 15.0 * ref_white[1] + 3.0 * ref_white[2] );
 
@@ -91,14 +91,16 @@ static void xyz_to_luv(double *xyz, const double ref_white[3], size_t length) {
 	for (size_t i = 0UL; i < length; i += 3UL) {
 
 		double y_r = xyz[i + 0UL] / ref_white[0];
-		double L = 0.0;
+		
+		//double L = 0.0;
+		double L = (y_r > CIE_EPLSION) ? 116.0 * cbrt(y_r) - 16.0 : CIE_KAPPA * y_r;
 
-		if (y_r > CIE_EPLSION) {
-			L = 116.0 * cbrt(y_r) - 16.0;
-		}
-		else {
-			L = CIE_KAPPA * y_r;
-		}
+		// if (y_r > CIE_EPLSION) {
+		// 	L = 116.0 * cbrt(y_r) - 16.0;
+		// }
+		// else {
+		// 	L = CIE_KAPPA * y_r;
+		// }
 
 		double u_prime = ( 4.0 * xyz[i + 0UL] ) / ( xyz[i + 0UL] + 15.0 * xyz[i + 1UL] + 3.0 * xyz[i + 2UL] );
 		double v_prime = ( 9.0 * xyz[i + 1UL] ) / ( xyz[i + 0UL] + 15.0 * xyz[i + 1UL] + 3.0 * xyz[i + 2UL] );
@@ -116,7 +118,7 @@ static void xyz_to_luv(double *xyz, const double ref_white[3], size_t length) {
 #define M_PI 4 * atan2(1,1)
 #endif /* M_PI */
 
-static void luv_to_lchuv(double *luv, size_t length) {
+static void luv_to_lchuv(double *restrict luv, size_t length) {
 	//L componet stays the same
 
 	#pragma omp parallel for shared(luv)
@@ -131,7 +133,7 @@ static void luv_to_lchuv(double *luv, size_t length) {
 	}
 }
 
-static void rgb_to_xyz(const uint8_t *rgb_data, double *xyz, size_t length) {
+static void rgb_to_xyz(const uint8_t *restrict rgb_data, double *restrict xyz, size_t length) {
 
 	//initalize the xyz array with the rgb values
 	#pragma omp parallel for
@@ -163,14 +165,18 @@ static void rgb_to_xyz(const uint8_t *rgb_data, double *xyz, size_t length) {
 	};
 
 	
-	double *rgb_value;
+	//double *rgb_value;
 	double xyz_output_loc[3] = {0.0, 0.0, 0.0};
 
-	#pragma omp parallel for private(rgb_value, xyz_output_loc) shared(conversion_matrix, xyz)
+	#pragma omp parallel for private(xyz_output_loc) shared(conversion_matrix, xyz)
 	for (size_t i = 0u; i < length; i += 3u) {
-		rgb_value = &xyz[i];
+		//rgb_value = &xyz[i];
 
-		cblas_dgemv(CblasRowMajor, CblasNoTrans, 3, 3, 1.0, conversion_matrix, 3, rgb_value, 1, 0.0, xyz_output_loc, 1);
+		xyz_output_loc[0] = conversion_matrix[0] * xyz[i + 0] + conversion_matrix[1] * xyz[i + 1] + conversion_matrix[2] * xyz[i + 2];
+		xyz_output_loc[1] = conversion_matrix[3] * xyz[i + 0] + conversion_matrix[4] * xyz[i + 1] + conversion_matrix[5] * xyz[i + 2];
+		xyz_output_loc[2] = conversion_matrix[6] * xyz[i + 0] + conversion_matrix[7] * xyz[i + 1] + conversion_matrix[8] * xyz[i + 2];
+
+		//cblas_dgemv(CblasRowMajor, CblasNoTrans, 3, 3, 1.0, conversion_matrix, 3, (xyz + i), 1, 0.0, xyz_output_loc, 1);
 		//cblas_dgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, 3, 1, 3, 1.0, conversion_matrix, 3, rgb_value, 1, 0.0, xyz_output_loc, 1);
 
 		xyz[i + 0] = xyz_output_loc[0];
@@ -188,10 +194,10 @@ static void rgb_to_xyz(const uint8_t *rgb_data, double *xyz, size_t length) {
 	
 }
 
-uint8_t * rgb_space_from_lchuv(double *lchuv, size_t length) {
-	uint8_t *rgb_data = malloc(length);
+uint8_t * rgb_space_from_lchuv(double *restrict img_data, size_t length) {
+	uint8_t *restrict rgb_data = malloc(length);
 
-	double *img_data = lchuv;
+	//double *img_data = lchuv;
 
 	lchuv_to_luv(img_data, length);
 
@@ -203,7 +209,7 @@ uint8_t * rgb_space_from_lchuv(double *lchuv, size_t length) {
 	return rgb_data;
 }
 
-static void lchuv_to_luv(double *lchuv, size_t length) {
+static void lchuv_to_luv(double *restrict lchuv, size_t length) {
 
 	#pragma omp parallel for
 	for (size_t i = 0UL; i < length; i += 3UL) {
@@ -216,19 +222,21 @@ static void lchuv_to_luv(double *lchuv, size_t length) {
 	}
 }
 
-static void luv_to_xyz(double *luv, const double ref_white[3], size_t length) {
+static void luv_to_xyz(double *restrict luv, const double ref_white[3], size_t length) {
 	const double ref_u = ( 4.0 * ref_white[0] ) / ( ref_white[0] + 15.0 * ref_white[1] + 3.0 * ref_white[2] );
 	const double ref_v = ( 9.0 * ref_white[1] ) / ( ref_white[0] + 15.0 * ref_white[1] + 3.0 * ref_white[2] );
 
 	#pragma omp parallel for
 	for (size_t i = 0UL; i < length; i += 3UL) {
-		double Y = 0.0;
-		if (luv[i + 0UL] > (CIE_KAPPA * CIE_EPLSION)) {
-			Y = pow( (luv[i + 0UL] + 16.0) / 116.0, 3.0);
-		}
-		else {
-			Y = luv[i + 0UL] / CIE_KAPPA;
-		}
+		double Y = (luv[i + 0UL] > (CIE_KAPPA * CIE_EPLSION)) ? pow( ( luv[i + 0UL] + 16.0 ) / 116.0, 3.0) : luv[i + 0UL] / CIE_KAPPA;
+		//double Y = 0.0;
+
+		// if (luv[i + 0UL] > (CIE_KAPPA * CIE_EPLSION)) {
+		// 	Y = pow( (luv[i + 0UL] + 16.0) / 116.0, 3.0);
+		// }
+		// else {
+		// 	Y = luv[i + 0UL] / CIE_KAPPA;
+		// }
 
 		double a = ( 1.0 / 3.0 ) * ( ( 52.0 * luv[i + 0UL] ) / ( luv[i + 1UL] + 13.0 * luv[i + 0UL] * ref_u ) - 1.0 );
 		double b = -5.0 * Y;
@@ -238,9 +246,9 @@ static void luv_to_xyz(double *luv, const double ref_white[3], size_t length) {
 		double X = ( d - b ) / ( a - c );
 		double Z = X * a + b;
 
-		X = X < 0.0 ? 0.0 : X > 1.0 ? 1.0 : X;
-		Y = Y < 0.0 ? 0.0 : Y > 1.0 ? 1.0 : Y;
-		Z = Z < 0.0 ? 0.0 : Z > 1.0 ? 1.0 : Z;
+		// X = X < 0.0 ? 0.0 : X > 1.0 ? 1.0 : X;
+		// Y = Y < 0.0 ? 0.0 : Y > 1.0 ? 1.0 : Y;
+		// Z = Z < 0.0 ? 0.0 : Z > 1.0 ? 1.0 : Z;
 
 		luv[i + 0UL] = X;
 		luv[i + 1UL] = Y;
@@ -248,7 +256,7 @@ static void luv_to_xyz(double *luv, const double ref_white[3], size_t length) {
 	}
 }
 
-static void xyz_to_rgb(double *xyz, uint8_t *rgb, size_t length) {
+static void xyz_to_rgb(double *restrict xyz, uint8_t *restrict rgb, size_t length) {
 
 	//pal/secam / bt601 D65
 	// const double conversion_matrix[] = {
@@ -291,15 +299,19 @@ static void xyz_to_rgb(double *xyz, uint8_t *rgb, size_t length) {
 
 	
 	double rgb_value[3] = {0.0, 0.0, 0.0};
-	double *xyz_value;
+	//double *xyz_value;
 
-	#pragma omp parallel for private(rgb_value, xyz_value) shared(rgb, conversion_matrix)
+	#pragma omp parallel for private(rgb_value) shared(rgb, conversion_matrix)
 	for (size_t i = 0UL; i < length; i += 3UL) {
 
-		xyz_value = &xyz[i];
+		//xyz_value = &xyz[i];
 
-		cblas_dgemv(CblasRowMajor, CblasNoTrans, 3, 3, 1.0, conversion_matrix, 3, xyz_value, 1, 0, rgb_value, 1);
+		//cblas_dgemv(CblasRowMajor, CblasNoTrans, 3, 3, 1.0, conversion_matrix, 3, (xyz + i), 1, 0, rgb_value, 1);
 		//cblas_dgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, 3, 1, 3, 1.0, conversion_matrix, 3, xyz_value, 1, 0.0, rgb_value, 1);
+
+		rgb_value[0] = conversion_matrix[0] * xyz[i + 0] + conversion_matrix[1] * xyz[i + 1] + conversion_matrix[2] * xyz[i + 2];
+		rgb_value[1] = conversion_matrix[3] * xyz[i + 0] + conversion_matrix[4] * xyz[i + 1] + conversion_matrix[5] * xyz[i + 2];
+		rgb_value[2] = conversion_matrix[6] * xyz[i + 0] + conversion_matrix[7] * xyz[i + 1] + conversion_matrix[8] * xyz[i + 2];
 
 		rgb_value[0] = rgb_value[0] <= 0.0031308 ? rgb_value[0] * 12.92 : 1.055 * ( pow(rgb_value[0], 1.0 / 2.4) ) - 0.055;
 		rgb_value[1] = rgb_value[1] <= 0.0031308 ? rgb_value[1] * 12.92 : 1.055 * ( pow(rgb_value[1], 1.0 / 2.4) ) - 0.055;
