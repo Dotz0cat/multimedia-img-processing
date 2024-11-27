@@ -28,7 +28,7 @@ int main(int argc, char **argv) {
     }
 
     if (!file_list_head) {
-        fprintf(stderr, "An issue with memory");
+        fprintf(stderr, "An issue with memory\n");
         return 1;
     }
     
